@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import math
 from enum import Enum
 import geopy
+from geopy.distance import distance
 
 class Direction(Enum):
     NONE=0
@@ -13,6 +14,7 @@ class ShipType(Enum):
     DD=1
     
 class MoveType(Enum):
+    NOT_SET=0
     COURSE_SPEED=1
     TO_WAYPOINT=2
     
@@ -35,25 +37,30 @@ class ShipPose:
     #     return [Navigation.get_endpoint(Navigation, circle_list[0], travel_dist-circle_list[1]), circle_list[0], travel_dist]
     def get_normalized(self):
         return ShipPose(self.latitude, self.longitude, (self.bearing + 720) % 360)
-    
+
 class MoveAction:
     type: MoveType
     course: float
     speed: float
     duration_min: float
-    turntime_min: float
     waypoint: ShipPose
+    def __init__(self):
+        self.type=MoveType.NOT_SET
+        self.course=0
+        self.speed=0
+        self.duration_min=0
+        self.waypoint=ShipPose(0,0,0)
     def course_speed(self, course: float, speed: float, duration_min: float=6):
-        type=MoveType.COURSE_SPEED
+        self.type=MoveType.COURSE_SPEED
         self.course=course
         self.speed=speed
         self.duration_min=duration_min
         return self
     def to_waypoint(self, waypoint: ShipPose, speed: float, turntime_min: float=6):
-        type=MoveType.TO_WAYPOINT
+        self.type=MoveType.TO_WAYPOINT
         self.waypoint=waypoint
         self.speed=speed
-        self.turntime_min=turntime_min
+        self.duration_min=turntime_min
         return self
 
 class Navigation:
@@ -76,9 +83,19 @@ class Navigation:
         alpha=Navigation.tangent_angle_alpha(math.radians(circle_center.latitude), math.radians(circle_center.longitude),
                                        math.radians(target_pose.latitude), math.radians(target_pose.longitude),
                                        turn_radius/Navigation.earth_radius)
-        circle_bearing=((Navigation.get_dist_bearing(circle_center, target_pose)[1]-init_pose.bearing+540)%360-180)
-        targetbearing=(circle_bearing + math.degrees(alpha)) % 360 if circle_bearing<0 else (circle_bearing - math.degrees(alpha)) % 360
-        circle_list=Navigation.turn_circle(init_pose, targetbearing, turn_radius)
+        circle_bearing=((Navigation.get_dist_bearing(circle_center, target_pose)[1]+540)%360-180)
+        target_bearing=(circle_bearing- math.degrees(alpha)) % 360 if circle_bearing<0 else (circle_bearing+ math.degrees(alpha)) % 360
+        tangents_azi=Navigation.tangent_azimuths(math.radians(circle_center.latitude), math.radians(circle_center.longitude),
+                                       math.radians(target_pose.latitude), math.radians(target_pose.longitude),
+                                       turn_radius)
+        #target_bearing=math.degrees(tangents_azi[0])-90 if circle_bearing>0 else math.degrees(tangents_azi[1])+90
+        print ("Tangent bearing: ", target_bearing)
+        print ("Target pose: ", target_pose)
+        print ("Init pose bearing: ", init_pose.bearing)
+        print("Circle center: ", circle_center)
+        print("Alpha (deg): ", math.degrees(alpha))
+        print("Circle bearing: ", circle_bearing)
+        circle_list=Navigation.turn_circle(init_pose, target_bearing, turn_radius)
         travel_dist=speed*turntime_min*60
         remainder_dist=Navigation.get_dist_bearing(circle_list[0], target_pose)[0]
         
@@ -102,12 +119,12 @@ class Navigation:
     #                                                  ,math.cos (angular_dist) - math.sin (lat_rad) * math.sin(final_lat)))
     #     return ShipPose(final_lat, final_long, init_pose.bearing) # replace init_pose.bearing with actual final bearing
     
-    def get_endpoint(init_pose: ShipPose, bearing: float, distance: float):
+    def get_endpoint(init_pose: ShipPose, bearing: float, dist: float):
         start_point = geopy.Point(init_pose.latitude, init_pose.longitude)
 
         # Compute destination point
-        destination = distance(kilometers=distance/1000).destination(point=start_point, bearing=bearing)
-        final_bearing = Navigation.get_dist_bearing(ShipPose(destination.latitude, destination.longitude, 0), init_pose)[1]+180 % 360
+        destination = distance(kilometers=dist/1000).destination(point=start_point, bearing=bearing)
+        final_bearing = (Navigation.get_dist_bearing(ShipPose(destination.latitude, destination.longitude, 0), init_pose)[1]+180) % 360
         return ShipPose(destination.latitude, destination.longitude, final_bearing)
     
     def turn_circle(init_pose:ShipPose, target_bearing:float, turn_radius: float, turn_dir: Direction = Direction.NONE):
@@ -167,6 +184,50 @@ class Navigation:
         alpha = math.asin(math.sin(r) / sin_theta)
 
         return alpha
-                
     
-            
+    
+
+    def tangent_azimuths(lat_c, lon_c, lat_p, lon_p, r):
+        """
+        Compute left/right tangent azimuths from circle center to a point
+        using a local ellipsoidal ENU approximation.
+
+        lat/lon in radians
+        r in meters
+        returns (az1, az2) in radians, clockwise from true north
+        """
+        A = 6378137.0
+        F = 1 / 298.257223563
+        E2 = F * (2 - F)
+
+        # Radii of curvature at center latitude
+        sin_lat = math.sin(lat_c)
+        denom = math.sqrt(1 - E2 * sin_lat * sin_lat)
+        N = A / denom
+        M = A * (1 - E2) / (denom ** 3)
+
+        # Local ENU projection (meters)
+        dlat = lat_p - lat_c
+        dlon = lon_p - lon_c
+        east  = dlon * N * math.cos(lat_c)
+        north = dlat * M
+
+        # Distance from center to point
+        d = math.hypot(east, north)
+        if d < r:
+            raise ValueError("Point lies inside the circle; no tangent exists.")
+
+        # Azimuth from center to point
+        theta = math.atan2(east, north)  # clockwise from north
+
+        # Tangent offset
+        alpha = math.acos(r / d)
+
+        # Left/right tangent azimuths
+        az1 = (theta + alpha) % (2 * math.pi)
+        az2 = (theta - alpha) % (2 * math.pi)
+
+        return az1, az2
+                    
+        
+                
