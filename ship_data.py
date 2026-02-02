@@ -10,29 +10,44 @@ class Warship:
     name: str
     speed: float #m/s
     turn_radius: float #meters
+    is_commanded: bool
     
-    
-    def __init__(self, start_pose:ShipPose, name:str, turn_radius:float=400):
+    def __init__(self, start_pose:ShipPose, name:str, commanded:bool, turn_radius:float=400):
         self.turn_start_pose=start_pose
         self.name=name
         self.turn_radius=turn_radius
+        self.is_commanded=commanded
         self.navigator=Navigator(self)
         pass
+
+class Fleet: 
+    ships: list[Warship]
+    def __init__(self):
+        self.ships=[]
+        pass
+    def add_ship(self, ship:Warship):
+        self.ships.append(ship)
+        pass
+    
     
 
 class Navigator:
         ship: Warship
         turntime_total_min=6
+        moves: list[MoveAction]=[]
         turntime_remaining_min=turntime_total_min
         intermediate_poses: list[ShipPose]=[]
         def __init__(self, outer:Warship):
             self.ship=outer
             pass
+        def give_moves(self, moves: list[MoveAction]):
+            self.moves=moves
+            pass
         
-        def move_chain(self, moves: list[MoveAction]):
+        def move(self):
             start_pose=self.ship.turn_start_pose
             current_pose=start_pose
-            for action in moves:
+            for action in self.moves:
                 if self.turntime_remaining_min<=action.duration_min:
                     action.duration_min=self.turntime_remaining_min
                 match action.type:
@@ -47,4 +62,9 @@ class Navigator:
                 self.intermediate_poses.append(current_pose)
             self.ship.turn_end_pose=current_pose
             
-            
+
+
+class FleetMaker:
+    @staticmethod
+    def csv_to_fleets(num_fleets:int, )->list[Fleet]:
+        pass
