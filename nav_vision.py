@@ -102,11 +102,11 @@ class Navigation:
         # Determine if the travel distance covers the turn and/or the straight segment. Returns final pose, intermediate pose, distance traveled, and whether the target was reached.
         if circle_list[1]>travel_dist:
             traveled_bearing=(init_pose.bearing+360*travel_dist/turn_radius)*(circle_list[2] / abs(circle_list[2]))
-            return Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], travel_dist, False
+            return Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], travel_dist, False, turntime_min
         elif(remainder_dist>travel_dist - circle_list[1]):
-            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist - circle_list[1]), circle_list[0], travel_dist, False
+            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist - circle_list[1]), circle_list[0], travel_dist, False, turntime_min
         else:
-            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, remainder_dist),  circle_list[0], remainder_dist+circle_list[1], True
+            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, remainder_dist),  circle_list[0], remainder_dist+circle_list[1], True, (remainder_dist+circle_list[1])/(speed*60)
         
     
     # def get_endpoint(init_pose: ShipPose, bearing: float, distance: float):

@@ -39,9 +39,11 @@ class Navigator:
                     case MoveType.COURSE_SPEED:
                         current_pose=Navigation.course_speed_linear(current_pose, action.course, 
                                                                     action.speed, self.ship.turn_radius, actiontime_min=action.duration_min)[0]
+                        self.turntime_remaining_min-=action.duration_min
                     case MoveType.TO_WAYPOINT:
-                        current_pose=Navigation.to_waypoint(current_pose, action.waypoint, action.speed, self.ship.turn_radius, turntime_min=action.duration_min)[0]
-                self.turntime_remaining_min-=action.duration_min
+                        nav_list=Navigation.to_waypoint(current_pose, action.waypoint, action.speed, self.ship.turn_radius, turntime_min=action.duration_min)
+                        current_pose=nav_list[0]
+                        self.turntime_remaining_min-=nav_list[4]
                 self.intermediate_poses.append(current_pose)
             self.ship.turn_end_pose=current_pose
             
