@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from nav_vision import ShipPose, MoveAction, MoveType, Navigation
+import pandas as pd
 
     
 
@@ -22,7 +23,9 @@ class Warship:
 
 class Fleet: 
     ships: list[Warship]
-    def __init__(self):
+    name: str
+    def __init__(self, name:str):
+        self.name=name
         self.ships=[]
         pass
     def add_ship(self, ship:Warship):
@@ -66,5 +69,6 @@ class Navigator:
 
 class FleetMaker:
     @staticmethod
-    def csv_to_fleets(num_fleets:int, )->list[Fleet]:
+    def csv_to_fleets(num_fleets:int, file_path:str)->list[Fleet]:
+        df=pd.read_csv(file_path)
         pass
