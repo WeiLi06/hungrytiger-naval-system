@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 import math
 from enum import Enum
-import geopy
 from geopy.distance import distance
+from geopy import Point
 
 class Direction(Enum):
     NONE=0
@@ -120,7 +120,7 @@ class Navigation:
     #     return ShipPose(final_lat, final_long, init_pose.bearing) # replace init_pose.bearing with actual final bearing
     
     def get_endpoint(init_pose: ShipPose, bearing: float, dist: float):
-        start_point = geopy.Point(init_pose.latitude, init_pose.longitude)
+        start_point = Point(init_pose.latitude, init_pose.longitude)
 
         # Compute destination point
         destination = distance(kilometers=dist/1000).destination(point=start_point, bearing=bearing)
@@ -141,8 +141,8 @@ class Navigation:
         return ShipPose(final_pos.latitude,final_pos.longitude,target_bearing).get_normalized(), abs(turn_radius*(dtheta_rad)), dtheta_rad
     
     def get_dist_bearing(pose1: ShipPose, pose2: ShipPose):
-        start_point = geopy.Point(pose1.latitude, pose1.longitude)
-        end_point = geopy.Point(pose2.latitude, pose2.longitude)
+        start_point = Point(pose1.latitude, pose1.longitude)
+        end_point = Point(pose2.latitude, pose2.longitude)
 
         lat1 = math.radians(start_point.latitude)
         lon1 = math.radians(start_point.longitude)
@@ -158,7 +158,7 @@ class Navigation:
         bearing = (math.degrees(initial_bearing) + 720) % 360
 
         # Compute distance
-        distance_km = geopy.distance.geodesic(start_point, end_point).km
+        distance_km = distance.geodesic(start_point, end_point).km
         return distance_km * 1000, bearing
     
     def tangent_angle_alpha(lat_c, lon_c, lat_p, lon_p, r):

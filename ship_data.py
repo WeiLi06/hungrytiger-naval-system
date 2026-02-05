@@ -13,7 +13,7 @@ class Warship:
     turn_radius: float #meters
     is_commanded: bool
     
-    def __init__(self, start_pose:ShipPose, name:str, commanded:bool, turn_radius:float=400):
+    def __init__(self, start_pose:ShipPose, name:str, commanded:bool=False, turn_radius:float=400):
         self.turn_start_pose=start_pose
         self.name=name
         self.turn_radius=turn_radius
@@ -70,5 +70,5 @@ class Navigator:
 class FleetMaker:
     @staticmethod
     def csv_to_fleets(num_fleets:int, file_path:str)->list[Fleet]:
-        df=pd.read_csv(file_path)
+        df=pd.read_csv(file_path, index_col=1)
         pass
