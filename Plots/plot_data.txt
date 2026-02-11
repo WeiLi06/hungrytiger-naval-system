@@ -1,0 +1,40 @@
+type	latitude	longitude	name	desc	icon	color
+T	1	1	Warspite, 0
+T	1.00117411301668	1.000216185673514	Warspite, 1
+T	1.004768493039736	1.0015158777031012	Warspite, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	2	2	Queen Elizabeth, 0
+T	2.001110988548871	2.0002146412679784	Queen Elizabeth, 1
+T	2.006338526446873	2.002105747442376	Queen Elizabeth, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	3	3	Queen Mary, 0
+T	3.00104789730192	3.000212064610119	Queen Mary, 1
+T	3.007908520197817	3.002695879379887	Queen Mary, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	4	4	Lion, 0
+T	4.0009848596592	4.000208451798743	Lion, 1
+T	4.009478464568908	4.003286812601027	Lion, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	5	5	Von der Tann, 0
+T	5.00092189598532	5.0002037973520475	Von der Tann, 1
+T	5.004753310369415	5.001594355270249	Von der Tann, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	6	6	Seydlitz, 0
+T	6.000859026616761	6.000198094187048	Seydlitz, 1
+T	6.001602217609663	6.000468283360863	Seydlitz, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	7	7	Moltke, 0
+T	7.000796271852493	7.000191333592692	Moltke, 1
+T	7.006319692420826	7.002203461548063	Moltke, 2
+
+type	latitude	longitude	name	desc	icon	color
+T	8	8	Derfflinger, 0
+T	8.000733651944673	8.000183505196835	Derfflinger, 1
+T	8.003168990762365	8.001072737557013	Derfflinger, 2
+
