@@ -3,6 +3,7 @@ import math
 from enum import Enum
 from geopy.distance import distance
 from geopy import Point
+from supplements import TurnInfo
 
 class Direction(Enum):
     NONE=0
@@ -50,18 +51,20 @@ class MoveAction:
         self.speed=0
         self.duration_min=0
         self.waypoint=ShipPose(0,0,0)
-    def course_speed(self, course: float, speed: float, duration_min: float=6):
+    def course_speed(self, course: float, speed: float, duration_min: float=TurnInfo.duration_min):
         self.type=MoveType.COURSE_SPEED
         self.course=course
         self.speed=speed
         self.duration_min=duration_min
         return self
-    def to_waypoint(self, waypoint: ShipPose, speed: float, turntime_min: float=6):
+    def to_waypoint(self, waypoint: ShipPose, speed: float, turntime_min: float=TurnInfo.duration_min):
         self.type=MoveType.TO_WAYPOINT
         self.waypoint=waypoint
         self.speed=speed
         self.duration_min=turntime_min
         return self
+    def __repr__(self):
+        return f"MoveAction(type={self.type}, course={self.course}, speed={self.speed}, duration_min={self.duration_min}, waypoint={self.waypoint})"
 
 class Navigation:
     #all distances and radii in meters, speeds in m/s, turn duration in min
@@ -158,7 +161,7 @@ class Navigation:
         bearing = (math.degrees(initial_bearing) + 720) % 360
 
         # Compute distance
-        distance_km = distance.geodesic(start_point, end_point).km
+        distance_km = distance(start_point, end_point).km
         return distance_km * 1000, bearing
     
     def tangent_angle_alpha(lat_c, lon_c, lat_p, lon_p, r):
