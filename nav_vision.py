@@ -18,6 +18,8 @@ class MoveType(Enum):
     NOT_SET=0
     COURSE_SPEED=1
     TO_WAYPOINT=2
+    MAINTAIN_STATION=3
+    FOLLOW_LINE=4
     
 
 
@@ -45,11 +47,15 @@ class MoveAction:
     speed: float
     duration_min: float
     waypoint: ShipPose
+    target_ship: str
+    bearing_from_target: float
     def __init__(self):
         self.type=MoveType.NOT_SET
         self.course=0
         self.speed=0
         self.duration_min=0
+        self.target_ship=""
+        self.bearing_from_target=0
         self.waypoint=ShipPose(0,0,0)
     def course_speed(self, course: float, speed: float, duration_min: float=TurnInfo.duration_min):
         self.type=MoveType.COURSE_SPEED
@@ -63,22 +69,31 @@ class MoveAction:
         self.speed=speed
         self.duration_min=turntime_min
         return self
+    def maintain_station(self, target_ship, bearing_from_target: float, speed: float, duration_min: float=TurnInfo.duration_min):
+        self.type=MoveType.MAINTAIN_STATION
+        self.target_ship=target_ship
+        self.bearing_from_target=bearing_from_target
+        self.speed=speed
+        self.duration_min=duration_min
+        return self
     def __repr__(self):
-        return f"MoveAction(type={self.type}, course={self.course}, speed={self.speed}, duration_min={self.duration_min}, waypoint={self.waypoint})"
+        return f"MoveAction(type={self.type}, course={self.course}, speed={self.speed}, duration_min={self.duration_min}, waypoint={self.waypoint}, target_ship={self.target_ship}, bearing_from_target={self.bearing_from_target})"
 
 class Navigation:
     #all distances and radii in meters, speeds in m/s, turn duration in min
     earth_radius=6371000
     
-    def course_speed_linear(init_pose: ShipPose, target_bearing: float, speed: float, turn_radius: float, turn_dir: Direction = Direction.NONE, actiontime_min:int=6):
+    def course_speed_linear(init_pose: ShipPose, target_bearing: float, speed: float, turn_radius: float, turn_dir: Direction = Direction.NONE, actiontime_min:int=TurnInfo.duration_min):
         travel_dist=speed*actiontime_min*60
         circle_list=Navigation.turn_circle(init_pose, target_bearing, turn_radius, turn_dir)
         if circle_list[1]>travel_dist:
             traveled_bearing=(init_pose.bearing+360*travel_dist/turn_radius)*(circle_list[2] / abs(circle_list[2]))
             return Navigation.turn_circle(init_pose, traveled_bearing, turn_radius, turn_dir)
-        return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist-circle_list[1]), circle_list[0], travel_dist
+        # return endpoint, intermediate pose, distance traveled
+        return {"final pose": Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist-circle_list[1]), 
+                "intermediate pose": circle_list[0], "distance traveled": travel_dist, "time elapsed": actiontime_min, "time elapsed (turn)": circle_list[1]/(speed*60)}
     
-    def to_waypoint(init_pose: ShipPose, target_pose: ShipPose, speed: float, turn_radius: float, turntime_min:int=6):
+    def to_waypoint(init_pose: ShipPose, target_pose: ShipPose, speed: float, turn_radius: float, turntime_min:int=TurnInfo.duration_min):
         if (((Navigation.get_dist_bearing(init_pose, target_pose)[1]-init_pose.bearing+540)%360-180)<0):
             circle_center=Navigation.get_endpoint(init_pose, init_pose.bearing-90, turn_radius)
         else:
@@ -88,9 +103,9 @@ class Navigation:
                                        turn_radius/Navigation.earth_radius)
         circle_bearing=((Navigation.get_dist_bearing(circle_center, target_pose)[1]+540)%360-180)
         target_bearing=(circle_bearing- math.degrees(alpha)) % 360 if circle_bearing<0 else (circle_bearing+ math.degrees(alpha)) % 360
-        tangents_azi=Navigation.tangent_azimuths(math.radians(circle_center.latitude), math.radians(circle_center.longitude),
-                                       math.radians(target_pose.latitude), math.radians(target_pose.longitude),
-                                       turn_radius)
+        # tangents_azi=Navigation.tangent_azimuths(math.radians(circle_center.latitude), math.radians(circle_center.longitude),
+        #                                math.radians(target_pose.latitude), math.radians(target_pose.longitude),
+        #                                turn_radius)
         #target_bearing=math.degrees(tangents_azi[0])-90 if circle_bearing>0 else math.degrees(tangents_azi[1])+90
         print ("Tangent bearing: ", target_bearing)
         print ("Target pose: ", target_pose)
@@ -102,16 +117,21 @@ class Navigation:
         travel_dist=speed*turntime_min*60
         remainder_dist=Navigation.get_dist_bearing(circle_list[0], target_pose)[0]
         
-        # Determine if the travel distance covers the turn and/or the straight segment. Returns final pose, intermediate pose, distance traveled, and whether the target was reached.
+        # Determine if the travel distance covers the turn and/or the straight segment. Returns final pose, intermediate pose, distance traveled, whether the target was reached, time elapsed, and arc time.
         if circle_list[1]>travel_dist:
             traveled_bearing=(init_pose.bearing+360*travel_dist/turn_radius)*(circle_list[2] / abs(circle_list[2]))
-            return Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], travel_dist, False, turntime_min
+            return {"final pose": Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], 
+                    "intermediate pose": Navigation.turn_circle(init_pose, traveled_bearing, turn_radius)[0], "distance traveled": travel_dist, "target reached": False, "time elapsed": turntime_min, "time elapsed (turn)": circle_list[1]/(speed*60)}
         elif(remainder_dist>travel_dist - circle_list[1]):
-            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist - circle_list[1]), circle_list[0], travel_dist, False, turntime_min
+            return {"final pose": Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist - circle_list[1]), 
+                    "intermediate pose": circle_list[0], "distance traveled": travel_dist, "target reached": False, "time elapsed": turntime_min, "time elapsed (turn)": circle_list[1]/(speed*60)}
         else:
-            return Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, remainder_dist),  circle_list[0], remainder_dist+circle_list[1], True, (remainder_dist+circle_list[1])/(speed*60)
-        
+            return {"final pose": Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, remainder_dist), 
+                    "intermediate pose": circle_list[0], "distance traveled": remainder_dist+circle_list[1], "target reached": True, "time elapsed": (remainder_dist+circle_list[1])/(speed*60), "time elapsed (turn)": circle_list[1]/(speed*60)}
     
+    def to_pose(init_pose: ShipPose, target_pose: ShipPose, speed: float, turn_radius: float, turntime_min:int=TurnInfo.duration_min):
+        
+        pass
     # def get_endpoint(init_pose: ShipPose, bearing: float, distance: float):
     #     bearing_rad=math.radians(bearing)
     #     lat_rad=math.radians(init_pose.latitude)
@@ -141,6 +161,7 @@ class Navigation:
             dx=turn_radius * (1 - math.cos(dtheta_rad)) * (dtheta_rad / abs(dtheta_rad))
             dy=turn_radius * (math.sin(dtheta_rad)) * (dtheta_rad / abs(dtheta_rad))
         final_pos=Navigation.get_endpoint( Navigation.get_endpoint(init_pose, init_pose.bearing+0, dy), init_pose.bearing+90, dx)
+        # return arc endpoint, arclength, change on angle in radians
         return ShipPose(final_pos.latitude,final_pos.longitude,target_bearing).get_normalized(), abs(turn_radius*(dtheta_rad)), dtheta_rad
     
     def get_dist_bearing(pose1: ShipPose, pose2: ShipPose):
@@ -164,8 +185,13 @@ class Navigation:
         distance_km = distance(start_point, end_point).km
         return distance_km * 1000, bearing
     
+    def midpoint(pose1: ShipPose, pose2: ShipPose):
+        distance, bearing = Navigation.get_dist_bearing(pose1, pose2)
+        return Navigation.get_endpoint(pose1, bearing, distance/2)
+    
     def tangent_angle_alpha(lat_c, lon_c, lat_p, lon_p, r):
-        
+        if r==0:
+            return 0
         # Angular distance theta between center and point
         cos_theta = (
             math.sin(lat_c) * math.sin(lat_p)
@@ -190,47 +216,47 @@ class Navigation:
     
     
 
-    def tangent_azimuths(lat_c, lon_c, lat_p, lon_p, r):
-        """
-        Compute left/right tangent azimuths from circle center to a point
-        using a local ellipsoidal ENU approximation.
+    # def tangent_azimuths(lat_c, lon_c, lat_p, lon_p, r):
+    #     """
+    #     Compute left/right tangent azimuths from circle center to a point
+    #     using a local ellipsoidal ENU approximation.
 
-        lat/lon in radians
-        r in meters
-        returns (az1, az2) in radians, clockwise from true north
-        """
-        A = 6378137.0
-        F = 1 / 298.257223563
-        E2 = F * (2 - F)
+    #     lat/lon in radians
+    #     r in meters
+    #     returns (az1, az2) in radians, clockwise from true north
+    #     """
+    #     A = 6378137.0
+    #     F = 1 / 298.257223563
+    #     E2 = F * (2 - F)
 
-        # Radii of curvature at center latitude
-        sin_lat = math.sin(lat_c)
-        denom = math.sqrt(1 - E2 * sin_lat * sin_lat)
-        N = A / denom
-        M = A * (1 - E2) / (denom ** 3)
+    #     # Radii of curvature at center latitude
+    #     sin_lat = math.sin(lat_c)
+    #     denom = math.sqrt(1 - E2 * sin_lat * sin_lat)
+    #     N = A / denom
+    #     M = A * (1 - E2) / (denom ** 3)
 
-        # Local ENU projection (meters)
-        dlat = lat_p - lat_c
-        dlon = lon_p - lon_c
-        east  = dlon * N * math.cos(lat_c)
-        north = dlat * M
+    #     # Local ENU projection (meters)
+    #     dlat = lat_p - lat_c
+    #     dlon = lon_p - lon_c
+    #     east  = dlon * N * math.cos(lat_c)
+    #     north = dlat * M
 
-        # Distance from center to point
-        d = math.hypot(east, north)
-        if d < r:
-            raise ValueError("Point lies inside the circle; no tangent exists.")
+    #     # Distance from center to point
+    #     d = math.hypot(east, north)
+    #     if d < r:
+    #         raise ValueError("Point lies inside the circle; no tangent exists.")
 
-        # Azimuth from center to point
-        theta = math.atan2(east, north)  # clockwise from north
+    #     # Azimuth from center to point
+    #     theta = math.atan2(east, north)  # clockwise from north
 
-        # Tangent offset
-        alpha = math.acos(r / d)
+    #     # Tangent offset
+    #     alpha = math.acos(r / d)
 
-        # Left/right tangent azimuths
-        az1 = (theta + alpha) % (2 * math.pi)
-        az2 = (theta - alpha) % (2 * math.pi)
+    #     # Left/right tangent azimuths
+    #     az1 = (theta + alpha) % (2 * math.pi)
+    #     az2 = (theta - alpha) % (2 * math.pi)
 
-        return az1, az2
+    #     return az1, az2
                     
         
                 
