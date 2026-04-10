@@ -4,6 +4,7 @@ from enum import Enum
 from geopy.distance import distance
 from geopy import Point
 from supplements import TurnInfo
+import supplements as sp
 
 class Direction(Enum):
     NONE=0
@@ -57,17 +58,21 @@ class MoveAction:
         self.target_ship=""
         self.bearing_from_target=0
         self.waypoint=ShipPose(0,0,0)
+        self.output_list=["EMPTY", 0, 0, 0]
+    
     def course_speed(self, course: float, speed: float, duration_min: float=TurnInfo.duration_min):
         self.type=MoveType.COURSE_SPEED
         self.course=course
         self.speed=speed
         self.duration_min=duration_min
+        self.output_list=["COURSE SPEED", self.course, sp.convert_mps_to_kt(self.speed), self.duration_min]
         return self
     def to_waypoint(self, waypoint: ShipPose, speed: float, turntime_min: float=TurnInfo.duration_min):
         self.type=MoveType.TO_WAYPOINT
         self.waypoint=waypoint
         self.speed=speed
         self.duration_min=turntime_min
+        self.output_list=["WAYPOINT SPEED", self.waypoint.latitude, self.waypoint.longitude, sp.convert_mps_to_kt(self.speed), self.duration_min]
         return self
     def maintain_station(self, target_ship, bearing_from_target: float, speed: float, duration_min: float=TurnInfo.duration_min):
         self.type=MoveType.MAINTAIN_STATION
@@ -75,6 +80,15 @@ class MoveAction:
         self.bearing_from_target=bearing_from_target
         self.speed=speed
         self.duration_min=duration_min
+        self.output_list=["MAINTAIN STATION", self.target_ship, self.bearing_from_target, sp.convert_mps_to_kt(self.speed), self.duration_min]
+        return self
+    def custom_init(self, type: MoveType, course: float=0, speed: float=0, duration_min: float=TurnInfo.duration_min, waypoint: ShipPose=ShipPose(0,0,0), target_ship: str="", bearing_from_target: float=0):
+        if type==MoveType.COURSE_SPEED:
+            self.course_speed(course, speed, duration_min)
+        elif type==MoveType.TO_WAYPOINT:
+            self.to_waypoint(waypoint, speed, duration_min)
+        elif type==MoveType.MAINTAIN_STATION:
+            self.maintain_station(target_ship, bearing_from_target, speed, duration_min)
         return self
     def __repr__(self):
         return f"MoveAction(type={self.type}, course={self.course}, speed={self.speed}, duration_min={self.duration_min}, waypoint={self.waypoint}, target_ship={self.target_ship}, bearing_from_target={self.bearing_from_target})"
@@ -90,10 +104,14 @@ class Navigation:
             traveled_bearing=(init_pose.bearing+360*travel_dist/turn_radius)*(circle_list[2] / abs(circle_list[2]))
             return Navigation.turn_circle(init_pose, traveled_bearing, turn_radius, turn_dir)
         # return endpoint, intermediate pose, distance traveled
+        if (speed==0):
+            return {"final pose": init_pose, "intermediate pose": init_pose, "distance traveled": 0, "time elapsed": actiontime_min, "time elapsed (turn)": 0}
         return {"final pose": Navigation.get_endpoint(circle_list[0], circle_list[0].bearing, travel_dist-circle_list[1]), 
                 "intermediate pose": circle_list[0], "distance traveled": travel_dist, "time elapsed": actiontime_min, "time elapsed (turn)": circle_list[1]/(speed*60)}
     
     def to_waypoint(init_pose: ShipPose, target_pose: ShipPose, speed: float, turn_radius: float, turntime_min:int=TurnInfo.duration_min):
+        if (speed==0):
+            raise ValueError("Speed cannot be zero for to_waypoint action.")
         if (((Navigation.get_dist_bearing(init_pose, target_pose)[1]-init_pose.bearing+540)%360-180)<0):
             circle_center=Navigation.get_endpoint(init_pose, init_pose.bearing-90, turn_radius)
         else:

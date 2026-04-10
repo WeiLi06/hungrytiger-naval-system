@@ -2,12 +2,14 @@ import pandas as pd
 import ship_data as sd
 import supplements as sp    
 
-side="Axis"
+side="Allies"
 input_path=r"Resources\ONS-122 Orders Doc - " + side + ".csv"
-output_path=r"Output\CSVs\ONS-122 Orders Doc - " + side + " - Output.csv"
+output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + " - Output.csv"
+output_plot_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + " - Plot.txt"
 
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
+print(df_out.loc[:, "0 ORDER TYPE":])
 fleet_names=df.loc[:, "FLEET"].unique()
 # print("GRAND FLEET" in fleet_names)
 # print(list(fleet_names).index("GRAND FLEET"))
@@ -48,5 +50,11 @@ for fleet in fleets:
         df_out.loc[ship.name, "FINAL LONG"]=ship.turn_end_pose.longitude
         df_out.loc[ship.name, "FINAL BEARING"]=ship.turn_end_pose.bearing
         df_out.loc[ship.name, "FINAL SPEED"]=sp.convert_mps_to_kt(ship.speed)
-sd.plot_course(navigator_list)
-df_out.to_csv(output_path)
+        for move in ship.navigator.remaining_moves:
+            move_index=ship.navigator.moves.index(move)
+            df_out.loc[ship.name, f"{move_index} ORDER TYPE"]=move.output_list[0]
+            df_out.loc[ship.name, f"{move_index}A"]=move.output_list[1]
+            df_out.loc[ship.name, f"{move_index}B"]=move.output_list[2]
+            df_out.loc[ship.name, f"{move_index}C"]=move.output_list[3]
+sd.plot_course(navigator_list, save_path=output_plot_path)
+df_out.to_csv(output_csv_path)

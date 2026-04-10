@@ -54,42 +54,61 @@ class Navigator:
             self.speed: float=outer.speed
             self.poses_timestamp=[] #list of poses and timestamps corresponding to poses, in minutes
             self.moves: list[MoveAction]=[]
+            self.remaining_moves: list[MoveAction]=[]
             self.turntime_remaining_min=self.turntime_total_min
             self.has_moved=False
             pass
         def give_moves(self, moves: list[MoveAction]):
             self.moves=moves
+            self.remaining_moves=moves
             pass
         def move(self):
             start_pose=self.ship.turn_start_pose
             start_time=TurnInfo.turn_start_time
             current_time=start_time
+            current_timestamp=TurnInfo.turn_start_timestamp
             current_pose=start_pose
-            self.poses_timestamp.append((current_pose, current_time))
+            self.poses_timestamp.append((current_pose, current_time, current_timestamp))
             for action in self.moves:
+                check_completion=False
                 if self.turntime_remaining_min<=0:
                     print(f"{self.ship.name} has no turn time remaining, cannot execute move {action}")
                     break
-                if self.turntime_remaining_min<=action.duration_min:
+                elif self.turntime_remaining_min<=action.duration_min:
+                    if action.type==MoveType.COURSE_SPEED:
+                        if action.duration_min==TurnInfo.duration_min or round(action.duration_min-self.turntime_remaining_min)==0:
+                            self.remaining_moves[self.remaining_moves.index(action)]=MoveAction()
+                            check_completion=True
+                        else:
+                            self.remaining_moves[self.remaining_moves.index(action)]=MoveAction().course_speed(course=action.course, speed=action.speed, duration_min=action.duration_min-self.turntime_remaining_min)
+                            
                     action.duration_min=self.turntime_remaining_min
+                else:
+                    self.remaining_moves[self.remaining_moves.index(action)]=MoveAction()
+                    check_completion=True
                 match action.type:
                     case MoveType.COURSE_SPEED:
                         nav_list=Navigation.course_speed_linear(current_pose, action.course, 
                                                                     action.speed, self.ship.turn_radius, actiontime_min=action.duration_min)
                         current_pose=nav_list["final pose"]
-                        self.poses_timestamp.append((nav_list["intermediate pose"], current_time+nav_list["time elapsed (turn)"]))
+                        self.poses_timestamp.append((nav_list["intermediate pose"], current_time+nav_list["time elapsed (turn)"], current_timestamp+pd.Timedelta(minutes=nav_list["time elapsed (turn)"])))
                         current_time+=nav_list["time elapsed"]
+                        current_timestamp+=pd.Timedelta(minutes=nav_list["time elapsed"])
                         self.turntime_remaining_min-=action.duration_min
                     case MoveType.TO_WAYPOINT:
                         nav_list=Navigation.to_waypoint(current_pose, action.waypoint, action.speed, self.ship.turn_radius, turntime_min=action.duration_min)
                         current_pose=nav_list["final pose"]
-                        self.poses_timestamp.append((nav_list["intermediate pose"], current_time+nav_list["time elapsed (turn)"]))
+                        self.poses_timestamp.append((nav_list["intermediate pose"], current_time+nav_list["time elapsed (turn)"], current_timestamp+pd.Timedelta(minutes=nav_list["time elapsed (turn)"])))
                         current_time+=nav_list["time elapsed"]
+                        current_timestamp+=pd.Timedelta(minutes=nav_list["time elapsed"])
                         self.turntime_remaining_min-=nav_list["time elapsed"]
+                        if not check_completion:
+                            if nav_list["target reached"]:
+                                self.remaining_moves[self.remaining_moves.index(action)]=MoveAction()
                     case MoveType.MAINTAIN_STATION:
                         pass
                 
-                self.poses_timestamp.append((current_pose, current_time))
+                self.poses_timestamp.append((current_pose, current_time, current_timestamp))
                 print(f"added pose {current_pose} to {self.ship.name}'s navigator")
                 self.ship.speed=action.speed
             self.ship.turn_end_pose=current_pose
@@ -111,9 +130,12 @@ def plot_course(navigators: list[Navigator], save_path:str="Output/Plots/plot_da
     for navigator in navigators:
         sequence=navigator.poses_timestamp
         t.write("type	latitude	longitude	name	desc	icon	color\n")
-        for pose, timestamp in sequence:
-            t.write(f"T	{pose.latitude}	{pose.longitude}	{navigator.ship.name}, {sequence.index((pose, timestamp))}, {sp.minutes_to_time(timestamp)}\n")
+        for pose, time, timestamp in sequence:
+            print(f"plotting pose {pose} for {navigator.ship.name} at time {timestamp}")
+            t.write(f"T	{round(pose.latitude, 6)}	{round(pose.longitude, 6)}	{navigator.ship.name}	{timestamp.round(freq='min').strftime("%m-%d-%H%M")}\n")
         t.write("\n")
+        t.write(f"W	{round(sequence[-1][0].latitude, 6)}	{round(sequence[-1][0].longitude, 6)}	{navigator.ship.name}	{TurnInfo.turn_end_timestamp.round(freq='min').strftime("%m-%d-%H%M")}\n")
+        print(f"plotted navigator for {navigator.ship.name}")
     pass
 
     
