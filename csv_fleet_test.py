@@ -2,10 +2,10 @@ import pandas as pd
 import ship_data as sd
 import supplements as sp    
 
-side="Allies"
+side="Conjoined 08-16-0800 to 2000"
 input_path=r"Resources\ONS-122 Orders Doc - " + side + ".csv"
-output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + " - Output.csv"
-output_plot_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + " - Plot.txt"
+output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - Output.csv" # " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + 
+output_plot_path=r"Output\Plots\ONS-122 - " + side + " - Plot.txt"
 
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
@@ -28,7 +28,7 @@ for fleet in fleets:
                 if not pd.isna(df.loc[ship_name, f"{x} ORDER TYPE"]):
                     print(f"found move: {df.loc[ship_name, f'{x} ORDER TYPE']}")
                     match df.loc[ship_name, f"{x} ORDER TYPE"]:
-                        case "COURSE SPEED":
+                        case "COURSE SPEED" | "EMPTY":
                             if pd.isna(df.loc[ship_name, f"{x}C"]):
                                 move_list.append(sd.MoveAction().course_speed(course=df.loc[ship_name, f"{x}A"], speed=sp.convert_kt_to_mps(df.loc[ship_name, f"{x}B"])))
                             else:
@@ -58,3 +58,4 @@ for fleet in fleets:
             df_out.loc[ship.name, f"{move_index}C"]=move.output_list[3]
 sd.plot_course(navigator_list, save_path=output_plot_path)
 df_out.to_csv(output_csv_path)
+sd.weather_report(navigator_list, sp.read_weather_data()[0], save_path=r"Output\Plots\ONS-122 - " + side + " - Weather Report.txt")

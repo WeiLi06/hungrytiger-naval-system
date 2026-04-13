@@ -1,30 +1,110 @@
 import pandas as pd
+import cdsapi
+import xarray as xr
+import cfgrib
 
 class TurnInfo:
-    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-15 20:00:00")
+    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-16 08:00:00")
     duration_timedelta: pd.Timedelta=pd.Timedelta("12:00:00")
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
     duration_min: int =60*12
-    turn_start_time: int=20*60
+    turn_start_time: int=8*60
     turn_end_time: int=turn_start_time+duration_min
+    grib_path: str=r"Resources\weather_data.grib"
+
+def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[75, -70, 30, 5], timestamp:pd.Timestamp=TurnInfo.turn_end_timestamp):
+    year=timestamp.year
+    month=f"{timestamp.month:02d}"
+    day=f"{timestamp.day:02d}"
+    time_str=f"{timestamp.hour:02d}:00"
     
-@staticmethod
+    dataset = "reanalysis-era5-single-levels"
+    request = {
+        "product_type": ["reanalysis"],
+        "variable": [
+            "10m_u_component_of_wind",
+            "10m_v_component_of_wind",
+            "2m_dewpoint_temperature",
+            "2m_temperature",
+            "mean_sea_level_pressure",
+            "mean_wave_direction",
+            "mean_wave_period",
+            "sea_surface_temperature",
+            "significant_height_of_combined_wind_waves_and_swell",
+            "surface_pressure",
+            "total_precipitation",
+            "sea_ice_cover",
+            "precipitation_type",
+            "cloud_base_height",
+            "total_cloud_cover",
+            "surface_solar_radiation_downwards",
+            "surface_thermal_radiation_downwards"
+        ],
+        "year": [f"{year}"],
+        "month": [f"{month}"],
+        "day": [f"{day}"],
+        "time": [f"{time_str}"],
+        "data_format": "grib",
+        "download_format": "unarchived",
+        "area": area
+    }
+
+    client = cdsapi.Client()
+    client.retrieve(dataset, request).download(grib_path)
+    
+def read_weather_data(grib_path: str=TurnInfo.grib_path) -> pd.DataFrame:
+    ds = xr.merge(cfgrib.open_datasets(grib_path), compat='override')
+    # ds = xr.open_datasets(grib_path, engine="cfgrib", backend_kwargs={'filter_by_keys':{'typeOfLevel':'surface','edition': 1}}) # 'typeOfLevel':'meanSea', 
+    # ds_meansea = xr.open_dataset(grib_path, engine="cfgrib", backend_kwargs={'filter_by_keys':{'typeOfLevel':'meanSea','edition': 1}})
+    # ds=ds_surface.merge(ds_meansea)
+    df = ds.to_dataframe()
+    return df, ds
+
+def weighted_average_weather_data(df: pd.DataFrame, lat: float, long: float):
+    sea_lat_floor=lat//.5*.5
+    sea_lat_ceil=sea_lat_floor+.5
+    sea_long_floor=long//.5*.5
+    sea_long_ceil=sea_long_floor+.5
+    sea_lat_weight=(lat-sea_lat_floor)/(sea_lat_ceil-sea_lat_floor) if sea_lat_ceil!=sea_lat_floor else 0
+    sea_long_weight=(long-sea_long_floor)/(sea_long_ceil-sea_long_floor) if sea_long_ceil!=sea_long_floor else 0
+    
+    atm_lat_floor=lat//.25*.25
+    atm_lat_ceil=atm_lat_floor+.25  
+    atm_long_floor=long//.25*.25
+    atm_long_ceil=atm_long_floor+.25
+    atm_lat_weight=(lat-atm_lat_floor)/(atm_lat_ceil-atm_lat_floor) if atm_lat_ceil!=atm_lat_floor else 0
+    atm_long_weight=(long-atm_long_floor)/(atm_long_ceil-atm_long_floor) if atm_long_ceil!=atm_long_floor else 0
+    sea_data=(
+        df.loc[(sea_lat_floor, sea_long_floor), "swh":"mwp"]*(1-sea_lat_weight)*(1-sea_long_weight)+
+        df.loc[(sea_lat_floor, sea_long_ceil), "swh":"mwp"]*(1-sea_lat_weight)*sea_long_weight+
+        df.loc[(sea_lat_ceil, sea_long_floor), "swh":"mwp"]*sea_lat_weight*(1-sea_long_weight)+
+        df.loc[(sea_lat_ceil, sea_long_ceil), "swh":"mwp"]*sea_lat_weight*sea_long_weight
+    )
+    atm_data=(
+        df.loc[(atm_lat_floor, atm_long_floor), "siconc":"cbh"]*(1-atm_lat_weight)*(1-atm_long_weight)+
+        df.loc[(atm_lat_floor, atm_long_ceil), "siconc":"cbh"]*(1-atm_lat_weight)*atm_long_weight+
+        df.loc[(atm_lat_ceil, atm_long_floor), "siconc":"cbh"]*atm_lat_weight*(1-atm_long_weight)+
+        df.loc[(atm_lat_ceil, atm_long_ceil), "siconc":"cbh"]*atm_lat_weight*atm_long_weight
+    )
+    data=pd.concat([sea_data, atm_data])
+    return data
+
 def convert_nmi_to_meters(nmi: float):
     return nmi*1852
 
-@staticmethod
+
 def convert_kt_to_mps(kt: float):
     return kt*0.514444
 
-@staticmethod
+
 def convert_mps_to_kt(mps: float):
     return mps/0.514444
 
-@staticmethod
+
 def convert_meters_to_nmi(meters: float):
     return meters/1852
 
-@staticmethod
+
 def position_along_arc(lat_arc_center, long_arc_center, radius):
     pass
 
