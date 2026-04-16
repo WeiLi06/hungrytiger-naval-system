@@ -2,10 +2,12 @@ import pandas as pd
 import ship_data as sd
 import supplements as sp    
 
-side="Conjoined 08-16-0800 to 2000"
+side="Conjoined 08-17-2000 to 18-0800"
 input_path=r"Resources\ONS-122 Orders Doc - " + side + ".csv"
-output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - Output.csv" # " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + 
-output_plot_path=r"Output\Plots\ONS-122 - " + side + " - Plot.txt"
+output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Output.csv" # " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + 
+output_plot_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Plot.txt"
+weather_report_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Weather Report.txt"
+give_weather_report=True
 
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
@@ -58,4 +60,18 @@ for fleet in fleets:
             df_out.loc[ship.name, f"{move_index}C"]=move.output_list[3]
 sd.plot_course(navigator_list, save_path=output_plot_path)
 df_out.to_csv(output_csv_path)
-sd.weather_report(navigator_list, sp.read_weather_data()[0], save_path=r"Output\Plots\ONS-122 - " + side + " - Weather Report.txt")
+if give_weather_report:
+    try:
+        weather_df, weather_ds = sp.read_weather_data()
+        sd.weather_report(navigator_list, weather_df, save_path=weather_report_path)
+    except Exception as e:
+        print("Error reading weather data:", e)
+        if "No such file or directory" in str(e):
+            print("Weather data file not found. Attempting to download...")
+            try:
+                sp.download_weather_data()
+                weather_df, weather_ds = sp.read_weather_data()
+                sd.weather_report(navigator_list, weather_df, save_path=weather_report_path)
+            except Exception as download_exception:
+                print("Error downloading weather data:", download_exception)
+                weather_df, weather_ds = None, None

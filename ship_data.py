@@ -154,9 +154,9 @@ def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str=
     for navigator in navigators:
         local_weather=sp.weighted_average_weather_data(df, navigator.poses_timestamp[-1][0].latitude, navigator.poses_timestamp[-1][0].longitude).to_dict()
         sequence=navigator.poses_timestamp
-        t.write(f"{navigator.ship.name} at (lat, long) ({round(sequence[-1][0].latitude, 6)}, {round(sequence[-1][0].longitude, 6)})\n")
+        t.write(f"{navigator.ship.name} at (lat, long)=({round(sequence[-1][0].latitude, 6)}, {round(sequence[-1][0].longitude, 6)})\n")
         t.write(f"Temperature: {round(local_weather['t2m']-273.15, 1)} C\n")
-        t.write(f"Wind: {round(sp.convert_mps_to_kt(math.hypot(local_weather['u10'], local_weather['v10'])), 1)} kt from {round((math.degrees(math.atan2(local_weather['u10'], local_weather['v10']))+180)%360)} degrees\n")
+        t.write(f"Wind: {round(sp.convert_mps_to_kt(math.hypot(local_weather['u10'], local_weather['v10'])), 1)} kt gusting to {round(sp.convert_mps_to_kt(local_weather['fg10']), 1)} kt from {round((math.degrees(math.atan2(local_weather['u10'], local_weather['v10']))+180)%360)} degrees\n")
         t.write(f"Wave height: {round(local_weather['swh'], 2)} m\n")
         t.write(f"Precipitation: {round(local_weather['tp']*1000, 2)} mm/h\n")
         t.write(f"Temperature-Dewpoint spread: {round(local_weather['t2m']-local_weather['d2m'], 1)} C\n")
@@ -165,5 +165,20 @@ def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str=
         t.write(f"Surface pressure: {round(local_weather['sp']/100, 1)} hPa\n")
         t.write(f"Surface Solar radiation: {round(local_weather['ssrd'])} J/m^2\n")
         t.write(f"Surface Thermal radiation: {round(local_weather['strd'])} J/m^2\n")
+        match local_weather["ptype"]:
+            case 0:
+                t.write("Precipitation type: None\n")
+            case 1:
+                t.write("Precipitation type: Rain\n")
+            case 3:
+                t.write("Precipitation type: Freezing Rain\n")
+            case 5:
+                t.write("Precipitation type: Snow\n")
+            case 6:
+                t.write("Precipitation type: Wet snow\n")
+            case 7:
+                t.write("Precipitation type: Slush\n")
+            case 8:
+                t.write("Precipitation type: Ice pellets\n")
         t.write("\n\n")
         

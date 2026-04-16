@@ -4,13 +4,13 @@ import xarray as xr
 import cfgrib
 
 class TurnInfo:
-    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-16 08:00:00")
+    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-17 20:00:00")
     duration_timedelta: pd.Timedelta=pd.Timedelta("12:00:00")
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
-    duration_min: int =60*12
-    turn_start_time: int=8*60
+    duration_min: int =int(duration_timedelta.total_seconds()/60)
+    turn_start_time: int=60*turn_start_timestamp.hour+turn_start_timestamp.minute
     turn_end_time: int=turn_start_time+duration_min
-    grib_path: str=r"Resources\weather_data.grib"
+    grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib"
 
 def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[75, -70, 30, 5], timestamp:pd.Timestamp=TurnInfo.turn_end_timestamp):
     year=timestamp.year
@@ -24,6 +24,8 @@ def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[
         "variable": [
             "10m_u_component_of_wind",
             "10m_v_component_of_wind",
+            "instantaneous_10m_wind_gust",
+            "10m_wind_gust_since_previous_post_processing",
             "2m_dewpoint_temperature",
             "2m_temperature",
             "mean_sea_level_pressure",
@@ -81,12 +83,23 @@ def weighted_average_weather_data(df: pd.DataFrame, lat: float, long: float):
         df.loc[(sea_lat_ceil, sea_long_ceil), "swh":"mwp"]*sea_lat_weight*sea_long_weight
     )
     atm_data=(
-        df.loc[(atm_lat_floor, atm_long_floor), "siconc":"cbh"]*(1-atm_lat_weight)*(1-atm_long_weight)+
-        df.loc[(atm_lat_floor, atm_long_ceil), "siconc":"cbh"]*(1-atm_lat_weight)*atm_long_weight+
-        df.loc[(atm_lat_ceil, atm_long_floor), "siconc":"cbh"]*atm_lat_weight*(1-atm_long_weight)+
-        df.loc[(atm_lat_ceil, atm_long_ceil), "siconc":"cbh"]*atm_lat_weight*atm_long_weight
+        df.loc[(atm_lat_floor, atm_long_floor), "siconc":"i10fg"]*(1-atm_lat_weight)*(1-atm_long_weight)+
+        df.loc[(atm_lat_floor, atm_long_ceil), "siconc":"i10fg"]*(1-atm_lat_weight)*atm_long_weight+
+        df.loc[(atm_lat_ceil, atm_long_floor), "siconc":"i10fg"]*atm_lat_weight*(1-atm_long_weight)+
+        df.loc[(atm_lat_ceil, atm_long_ceil), "siconc":"i10fg"]*atm_lat_weight*atm_long_weight
     )
     data=pd.concat([sea_data, atm_data])
+    match (atm_lat_weight>.5, atm_long_weight>.5):
+        case (True, True):
+            data=pd.concat([data, pd.Series([df.loc[(atm_lat_ceil, atm_long_ceil), "ptype"]], index=["ptype"])])
+        case (True, False):
+            data=pd.concat([data, pd.Series([df.loc[(atm_lat_ceil, atm_long_floor), "ptype"]], index=["ptype"])])
+        case (False, True):
+            data=pd.concat([data, pd.Series([df.loc[(atm_lat_floor, atm_long_ceil), "ptype"]], index=["ptype"])])
+        case (False, False):
+            data=pd.concat([data, pd.Series([df.loc[(atm_lat_floor, atm_long_floor), "ptype"]], index=["ptype"])])
+        case _:
+            data=pd.concat([data, pd.Series([0], index=["ptype"])])
     return data
 
 def convert_nmi_to_meters(nmi: float):
