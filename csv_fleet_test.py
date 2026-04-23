@@ -2,13 +2,14 @@ import pandas as pd
 import ship_data as sd
 import supplements as sp    
 
-side="Conjoined 08-17-2000 to 18-0800"
+side="Conjoined 08-19-0800 to 1200"
 input_path=r"Resources\ONS-122 Orders Doc - " + side + ".csv"
 output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Output.csv" # " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + 
 output_plot_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Plot.txt"
-weather_report_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Weather Report.txt"
-give_weather_report=True
-
+weather_report_path=r"Output\Reports\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Weather Report.txt"
+master_file_path=rf"Master Files\MASTER {sp.TurnInfo().turn_start_timestamp.strftime('%m-%d-%H%M')}.txt"
+master_output_path=rf"Master Files\MASTER {sp.TurnInfo().turn_end_timestamp.strftime('%m-%d-%H%M')}.txt"
+give_weather_report=False
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
 print(df_out.loc[:, "0 ORDER TYPE":])
@@ -17,10 +18,13 @@ fleet_names=df.loc[:, "FLEET"].unique()
 # print(list(fleet_names).index("GRAND FLEET"))
 fleets: list[sd.Fleet]=[]
 for fleet_name in df.loc[:, "FLEET"].unique():
+    if pd.isna(fleet_name):
+        continue
     fleets.append(sd.Fleet(fleet_name))
 for fleet in fleets:
     for ship_name in df.loc[df["FLEET"]==fleet.name].index:
-            
+            if pd.isna(ship_name):
+                continue
             new_ship=sd.Warship(sd.ShipPose(df.loc[ship_name, "INITIAL LAT"], df.loc[ship_name, "INITIAL LONG"], df.loc[ship_name, "INITIAL BEARING"]),
                                 ship_name, df.loc[ship_name, "INITIAL SPEED"], df.loc[ship_name, "IS COMMANDED"], ship_class=df.loc[ship_name, "CLASS"])
             move_list: list[sd.MoveAction]=[]
@@ -58,7 +62,6 @@ for fleet in fleets:
             df_out.loc[ship.name, f"{move_index}A"]=move.output_list[1]
             df_out.loc[ship.name, f"{move_index}B"]=move.output_list[2]
             df_out.loc[ship.name, f"{move_index}C"]=move.output_list[3]
-sd.plot_course(navigator_list, save_path=output_plot_path)
 df_out.to_csv(output_csv_path)
 if give_weather_report:
     try:
@@ -75,3 +78,4 @@ if give_weather_report:
             except Exception as download_exception:
                 print("Error downloading weather data:", download_exception)
                 weather_df, weather_ds = None, None
+sd.plot_course(navigator_list, save_path=output_plot_path, master_path=master_file_path, master_output_path=master_output_path)

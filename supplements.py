@@ -4,8 +4,8 @@ import xarray as xr
 import cfgrib
 
 class TurnInfo:
-    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-17 20:00:00")
-    duration_timedelta: pd.Timedelta=pd.Timedelta("12:00:00")
+    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-19 08:00:00")
+    duration_timedelta: pd.Timedelta=pd.Timedelta("00:25:00")
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
     duration_min: int =int(duration_timedelta.total_seconds()/60)
     turn_start_time: int=60*turn_start_timestamp.hour+turn_start_timestamp.minute

@@ -128,7 +128,7 @@ class FleetMaker:
         pass
     
 @staticmethod
-def plot_course(navigators: list[Navigator], save_path:str="Output/Plots/plot_data.txt"):
+def plot_course(navigators: list[Navigator], save_path:str="Output/Plots/plot_data.txt", master_path:str="Resources/MASTER.txt", master_output_path:str="Output/Reports/MASTER.txt"):
     t=open(save_path, "w")
     t.write("type	latitude	longitude	name	desc	icon	color\n")
     for navigator in navigators:
@@ -140,13 +140,48 @@ def plot_course(navigators: list[Navigator], save_path:str="Output/Plots/plot_da
         sequence=navigator.poses_timestamp
         t.write("type	latitude	longitude	name	desc	icon	color\n")
         for pose, time, timestamp in sequence:
-            print(f"plotting pose {pose} for {navigator.ship.name} at time {timestamp}")
+            # print(f"plotting pose {pose} for {navigator.ship.name} at time {timestamp}")
             t.write(f"T	{round(pose.latitude, 6)}	{round(pose.longitude, 6)}	{navigator.ship.name}	{timestamp.round(freq='min').strftime("%m-%d-%H%M")}\n")
         t.write("\n")
         t.write(f"W	{round(sequence[-1][0].latitude, 6)}	{round(sequence[-1][0].longitude, 6)}	{navigator.ship.name}	{TurnInfo.turn_end_timestamp.round(freq='min').strftime("%m-%d-%H%M")}\n")
         t.write("\n\n")
         print(f"plotted navigator for {navigator.ship.name}")
-
+    t.close()
+    
+    try:
+        master=open(master_path, "a")
+        master.write("\n")
+        master.close()
+        master=open(master_path, "r").readlines()
+        master_out=open(master_output_path, "w")
+    except FileNotFoundError:
+        print(f"File not found: {master_path}")
+        return
+    master.append("\n")
+    for navigator in navigators:
+        sequence=navigator.poses_timestamp
+        added_str_list=[]
+        for pose, time, timestamp in sequence[1:]:
+            added_str_list.append(f"T\t{round(pose.latitude, 6)}\t{round(pose.longitude, 6)}\t{navigator.ship.name}\t{timestamp.round(freq='min').strftime('%m-%d-%H%M')}\n")
+        print(f"added {len(added_str_list)} poses for {navigator.ship.name} to be added to master file")
+        for i in range(len(master)-1):
+            line=master[i]
+            next_line=master[i+1]
+            if navigator.ship.name in line:
+                if line.startswith("W"):
+                    extras=line.split("\t")[-2:]
+                    master.pop(i)
+                    master.insert(i, f"W\t{round(sequence[-1][0].latitude, 6)}\t{round(sequence[-1][0].longitude, 6)}\t{navigator.ship.name}\t{TurnInfo.turn_end_timestamp.round(freq='min').strftime('%m-%d-%H%M')}\t{extras[0]}\t{extras[1]}")
+                elif line.startswith("T") and next_line.startswith(("\n", "type")):
+                    for added_str in added_str_list[::-1]:
+                        master.insert(i+1, added_str)
+                    break
+            
+                    
+    master_out.writelines(master)
+    master_out.close()
+            
+    
 @staticmethod
 def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str="Output/Plots/weather_report.txt"):
     t=open(save_path, "w")
@@ -181,4 +216,5 @@ def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str=
             case 8:
                 t.write("Precipitation type: Ice pellets\n")
         t.write("\n\n")
-        
+        print(f"generated weather report for {navigator.ship.name}")
+    t.close()
