@@ -7,9 +7,9 @@ class TurnInfo:
     #Input parameters
     turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-19 08:00:00") #YYYY-MM-DD HH:MM:SS
     duration_timedelta: pd.Timedelta=pd.Timedelta("00:25:00") #HH:MM:SS
-    orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-19-0800 to 1200.csv" #Relative or absolute path to orders csv file
-    game_name= "ONS-122"
-    give_weather_report=False
+    orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-19-0800 to 1200.csv" #Relative or absolute path to orders .csv file
+    game_name= "ONS-122" #Name of the game, used in output file names
+    give_weather_report=False #Whether to give a weather report in the Reports folder
     #Calculated time parameters
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
     duration_min: int =int(duration_timedelta.total_seconds()/60)
@@ -22,8 +22,9 @@ class TurnInfo:
     master_file_path: str=rf"Master Files\{game_name}__{turn_start_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
     master_output_path: str=rf"Master Files\{game_name}__{turn_end_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
     #Static parameters
-    grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib"
-    
+    grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib" #Path to save downloaded weather data in a .grib file
+
+#-----Users can comfortably ignore everything below this line-----
 
 def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[75, -70, 30, 5], timestamp:pd.Timestamp=TurnInfo.turn_end_timestamp):
     year=timestamp.year
