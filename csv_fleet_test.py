@@ -2,14 +2,13 @@ import pandas as pd
 import ship_data as sd
 import supplements as sp    
 
-side="Conjoined 08-19-0800 to 1200"
-input_path=r"Resources\ONS-122 Orders Doc - " + side + ".csv"
-output_csv_path=r"Output\CSVs\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Output.csv" # " - " + sp.TurnInfo().turn_end_timestamp.strftime("%m-%d-%H%M") + 
-output_plot_path=r"Output\Plots\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Plot.txt"
-weather_report_path=r"Output\Reports\ONS-122 - " + side + " - " + sp.TurnInfo().turn_end_timestamp.strftime("%d-%H%M") + " - Weather Report.txt"
-master_file_path=rf"Master Files\MASTER {sp.TurnInfo().turn_start_timestamp.strftime('%m-%d-%H%M')}.txt"
-master_output_path=rf"Master Files\MASTER {sp.TurnInfo().turn_end_timestamp.strftime('%m-%d-%H%M')}.txt"
-give_weather_report=False
+input_path=sp.TurnInfo.orders_path
+output_csv_path=sp.TurnInfo.output_csv_path
+output_plot_path=sp.TurnInfo.output_plot_path
+weather_report_path=sp.TurnInfo.weather_report_path
+master_file_path=sp.TurnInfo.master_file_path
+master_output_path=sp.TurnInfo.master_output_path
+give_weather_report=sp.TurnInfo.give_weather_report
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
 print(df_out.loc[:, "0 ORDER TYPE":])

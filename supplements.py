@@ -4,13 +4,26 @@ import xarray as xr
 import cfgrib
 
 class TurnInfo:
-    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-19 08:00:00")
-    duration_timedelta: pd.Timedelta=pd.Timedelta("00:25:00")
+    #Input parameters
+    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-19 08:00:00") #YYYY-MM-DD HH:MM:SS
+    duration_timedelta: pd.Timedelta=pd.Timedelta("00:25:00") #HH:MM:SS
+    orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-19-0800 to 1200.csv" #Relative or absolute path to orders csv file
+    game_name= "ONS-122"
+    give_weather_report=False
+    #Calculated time parameters
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
     duration_min: int =int(duration_timedelta.total_seconds()/60)
     turn_start_time: int=60*turn_start_timestamp.hour+turn_start_timestamp.minute
     turn_end_time: int=turn_start_time+duration_min
+    #Calculated file paths
+    output_csv_path: str=rf"Output\CSVs\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Output.csv"
+    output_plot_path: str=rf"Output\Plots\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Plot.txt"
+    weather_report_path: str=rf"Output\Reports\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Weather Report.txt"
+    master_file_path: str=rf"Master Files\{game_name}__{turn_start_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
+    master_output_path: str=rf"Master Files\{game_name}__{turn_end_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
+    #Static parameters
     grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib"
+    
 
 def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[75, -70, 30, 5], timestamp:pd.Timestamp=TurnInfo.turn_end_timestamp):
     year=timestamp.year
