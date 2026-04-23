@@ -1,3 +1,5 @@
+#Ignore everything, just run csv_fleet_test.py to actually execute the program. Make sure to edit the parameters in supplements.py before running.
+#-----Users can comfortably ignore everything below this line-----
 from dataclasses import dataclass
 import math
 from enum import Enum

@@ -10,6 +10,9 @@ class TurnInfo:
     orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-19-0800 to 1200.csv" #Relative or absolute path to orders .csv file
     game_name= "ONS-122" #Name of the game, used in output file names
     give_weather_report=False #Whether to give a weather report in the Reports folder
+    
+    #-----Users can comfortably ignore everything below this line-----
+    
     #Calculated time parameters
     turn_end_timestamp: pd.Timestamp=turn_start_timestamp+duration_timedelta
     duration_min: int =int(duration_timedelta.total_seconds()/60)
@@ -24,7 +27,7 @@ class TurnInfo:
     #Static parameters
     grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib" #Path to save downloaded weather data in a .grib file
 
-#-----Users can comfortably ignore everything below this line-----
+
 
 def download_weather_data(grib_path: str=TurnInfo.grib_path, area: list[float]=[75, -70, 30, 5], timestamp:pd.Timestamp=TurnInfo.turn_end_timestamp):
     year=timestamp.year
@@ -119,24 +122,19 @@ def weighted_average_weather_data(df: pd.DataFrame, lat: float, long: float):
 def convert_nmi_to_meters(nmi: float):
     return nmi*1852
 
-
 def convert_kt_to_mps(kt: float):
     return kt*0.514444
-
 
 def convert_mps_to_kt(mps: float):
     return mps/0.514444
 
-
 def convert_meters_to_nmi(meters: float):
     return meters/1852
-
 
 def position_along_arc(lat_arc_center, long_arc_center, radius):
     pass
 
 def minutes_to_time(minutes: int):
-    
     hours=int((minutes//60))%24
     mins=int(minutes%60)
     return f"{hours:02d}{mins:02d}"

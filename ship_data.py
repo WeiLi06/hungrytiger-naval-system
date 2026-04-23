@@ -1,10 +1,11 @@
+#Ignore everything, just run csv_fleet_test.py to actually execute the program. Make sure to edit the parameters in supplements.py before running.
+#-----Users can comfortably ignore everything below this line-----
 from dataclasses import dataclass
 import math
 from nav_vision import ShipPose, MoveAction, MoveType, Navigation
 import pandas as pd
 from supplements import TurnInfo
 import supplements as sp
-
 
 class Warship:
     turn_start_pose: ShipPose

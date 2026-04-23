@@ -1,3 +1,5 @@
+#Just run this file to actually execute the program. Make sure to edit the parameters in supplements.py before running.
+#-----Users can comfortably ignore everything below this line-----
 import pandas as pd
 import ship_data as sd
 import supplements as sp    
