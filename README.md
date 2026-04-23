@@ -1,7 +1,7 @@
 ## hungrytiger-naval-system
 A system for resolving movement (and hopefully eventually other stuff) for Kriegsspiel.
 
-INSTRUCTIONS /n
+INSTRUCTIONS:
 Clone repository
 Download dependencies (to a Virtual Environment is recommended)
 Move orders .csv file into the "Resources" folder
