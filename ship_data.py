@@ -17,17 +17,18 @@ class Warship:
     ship_class: str
     navigator=None
     
-    def __init__(self, start_pose:ShipPose, name:str, speed:float, commanded:bool=False, turn_radius:float=0, ship_class:str=""):
+    def __init__(self, start_pose:ShipPose, name:str, speed:float, commanded:bool=False, turn_radius:float=0, ship_class:str="", ship_type:str=""):
         self.turn_start_pose=start_pose
         self.name=name
         self.speed=speed
         self.turn_radius=turn_radius
         self.is_commanded=commanded
-        self.ship_class=ship_class.title()
+        self.ship_class=ship_class
+        self.ship_type=ship_type.title
         self.navigator=Navigator(self)
         pass
     def __repr__(self):
-        return f"Warship(name={self.name}, speed={self.speed}, class={self.ship_class}, commanded={self.is_commanded}, turn_radius={self.turn_radius}, turn_start_pose={self.turn_start_pose}, turn_end_pose={self.turn_end_pose}, navigator={self.navigator})"
+        return f"Warship(name={self.name}, speed={self.speed}, class={self.ship_class}, type={self.ship_type}, commanded={self.is_commanded}, turn_radius={self.turn_radius}, turn_start_pose={self.turn_start_pose}, turn_end_pose={self.turn_end_pose}, navigator={self.navigator})"
 
 
 class Fleet: 
@@ -193,7 +194,7 @@ def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str=
         t.write(f"{navigator.ship.name} at (lat, long)=({round(sequence[-1][0].latitude, 6)}, {round(sequence[-1][0].longitude, 6)})\n")
         t.write(f"Temperature: {round(local_weather['t2m']-273.15, 1)} C\n")
         t.write(f"Wind: {round(sp.convert_mps_to_kt(math.hypot(local_weather['u10'], local_weather['v10'])), 1)} kt gusting to {round(sp.convert_mps_to_kt(local_weather['fg10']), 1)} kt from {round((math.degrees(math.atan2(local_weather['u10'], local_weather['v10']))+180)%360)} degrees\n")
-        t.write(f"Wave height: {round(local_weather['swh'], 2)} m\n")
+        t.write(f"Waves: {round(local_weather['swh'], 2)} m from {round(local_weather['mwd'])} degrees every {round(local_weather['mwp'], 1)} seconds\n")
         t.write(f"Precipitation: {round(local_weather['tp']*1000, 2)} mm/h\n")
         t.write(f"Temperature-Dewpoint spread: {round(local_weather['t2m']-local_weather['d2m'], 1)} C\n")
         t.write(f"Cloud cover: {round(local_weather['tcc']*100, 1)}%\n")
@@ -218,4 +219,28 @@ def weather_report(navigators: list[Navigator], df: pd.DataFrame, save_path:str=
                 t.write("Precipitation type: Ice pellets\n")
         t.write("\n\n")
         print(f"generated weather report for {navigator.ship.name}")
+    t.close()
+    
+@staticmethod
+def contact_report(fleets: list[Fleet], save_path:str="Output/Reports/contact_report.txt"):
+    t=open(save_path, "w")
+    t.write(f"CONTACT REPORTS, {TurnInfo.turn_end_timestamp.round(freq='min').strftime('%m-%d-%H%M')}\n\n")
+    for fleet in fleets:
+        for ship in fleet.ships:
+            t.write(f"{ship.name} at (lat, long)=({round(ship.turn_end_pose.latitude, 6)}, {round(ship.turn_end_pose.longitude, 6)})\n")
+            contacts: list[tuple[str, float, float]]=[] #list of tuples of (contact, distance, bearing)
+            for other_fleet in fleets:
+                if other_fleet.name==fleet.name:
+                    continue
+                for contact in other_fleet.ships:
+                    distance, bearing=Navigation.get_dist_bearing(ship.turn_end_pose, contact.turn_end_pose)
+                    contacts.append((contact.name, distance, bearing))
+            contacts.sort(key=lambda x: x[1])
+            for contact_name, contact_distance, contact_bearing in contacts:
+                if TurnInfo.give_contact_names:
+                    t.write(f"Contact, {contact_name}, {contact.ship_class}, Bearing: {round(contact_bearing)}, Range: {round(contact_distance/1852, 1)} nmi \n")
+                else:
+                    t.write(f"Contact, Bearing: {round(contact_bearing)}, Range: {round(contact_distance/1852, 1)} nmi \n")
+            t.write("\n")
+            print(f"generated contact report for {ship.name}")
     t.close()

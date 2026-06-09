@@ -5,11 +5,13 @@ import cfgrib
 
 class TurnInfo:
     #Input parameters
-    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-19 08:00:00") #YYYY-MM-DD HH:MM:SS
-    duration_timedelta: pd.Timedelta=pd.Timedelta("00:25:00") #HH:MM:SS
-    orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-19-0800 to 1200.csv" #Relative or absolute path to orders .csv file
+    turn_start_timestamp: pd.Timestamp=pd.Timestamp("1942-08-20 02:00:00") #YYYY-MM-DD HH:MM:SS
+    duration_timedelta: pd.Timedelta=pd.Timedelta("2:00:00") #HH:MM:SS
+    orders_path: str=r"Resources\ONS-122 Orders Doc - Conjoined 08-20-0200 to 0400.csv" #Relative or absolute path to orders .csv file
     game_name= "ONS-122" #Name of the game, used in output file names
-    give_weather_report=False #Whether to give a weather report in the Reports folder
+    give_weather_report=True #Whether to give a weather report in the Reports folder
+    give_contact_report=True #Whether to give a contact report in the Reports folder
+    give_contact_names=True #Whether to give contact names in the contact report, if False will just give "CONTACT"
     
     #-----Users can comfortably ignore everything below this line-----
     
@@ -21,9 +23,10 @@ class TurnInfo:
     #Calculated file paths
     output_csv_path: str=rf"Output\CSVs\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Output.csv"
     output_plot_path: str=rf"Output\Plots\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Plot.txt"
-    weather_report_path: str=rf"Output\Reports\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Weather Report.txt"
+    weather_report_path: str=rf"Output\Reports\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Weather Reports.txt"
     master_file_path: str=rf"Master Files\{game_name}__{turn_start_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
     master_output_path: str=rf"Master Files\{game_name}__{turn_end_timestamp.strftime('%m-%d-%H%M')}__MASTER.txt"
+    contact_report_path: str=rf"Output\Reports\{game_name}__{turn_end_timestamp.strftime('%d-%H%M')}__Contact Reports.txt"
     #Static parameters
     grib_path: str=rf"Resources\weather_data_{turn_end_timestamp.strftime('%m-%d-%H%M')}.grib" #Path to save downloaded weather data in a .grib file
 

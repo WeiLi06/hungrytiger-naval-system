@@ -10,7 +10,9 @@ output_plot_path=sp.TurnInfo.output_plot_path
 weather_report_path=sp.TurnInfo.weather_report_path
 master_file_path=sp.TurnInfo.master_file_path
 master_output_path=sp.TurnInfo.master_output_path
+contact_report_path=sp.TurnInfo.contact_report_path
 give_weather_report=sp.TurnInfo.give_weather_report
+give_contact_report=sp.TurnInfo.give_contact_report
 df=pd.read_csv(input_path, index_col=0)
 df_out=df
 print(df_out.loc[:, "0 ORDER TYPE":])
@@ -79,4 +81,6 @@ if give_weather_report:
             except Exception as download_exception:
                 print("Error downloading weather data:", download_exception)
                 weather_df, weather_ds = None, None
+if give_contact_report:
+    sd.contact_report(fleets, save_path=contact_report_path)
 sd.plot_course(navigator_list, save_path=output_plot_path, master_path=master_file_path, master_output_path=master_output_path)
